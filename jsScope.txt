@@ -1,0 +1,11 @@
+
+for (var i in [5, 6, 7]) {
+(function (i) {
+calls.push function () { return i }
+})(i)
+}
+
+for call in calls
+call()
+
+7,7,7

@@ -1,0 +1,28 @@
+body {
+  padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+  padding-bottom: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+}
+
+.fig {
+  margin-top: 3px;
+  font-weight: bold;  
+}
+   
+pre.prettyprint {
+
+  padding-left: 20px;
+  padding-right: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+
+  border-color: rgb(220,220,220);
+  
+}
+
+.code-insertion {
+  background-color: rgb(214, 233, 198); 
+}
+
+.code-deletion {
+  background-color: rgb(233, 198, 198); 
+}

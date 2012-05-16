@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+  <head>  
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/google-code-prettify/prettify.css">
+
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap-responsive.min.css">    
+    
+    <script type="text/javascript" src="js/google-code-prettify/prettify.js"></script>
+    <title>Callbacks and Scoping</title>
+  </head>
+  <body onload="prettyPrint()">
+      <div class="container">
+      
+      <div class="navbar navbar-fixed-top">
+        <div class="navbar-inner">
+          <div class="container">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </a>
+            <a class="brand" href="#">The Oliner's Guide to Programming Concepts</a>
+          </div>
+        </div>
+      </div>
+      <h1>Callbacks and Scoping with Python and Javascript <small>by Julian Ceipek</small></h1>
+
+      <h2>Why Should I Care?</h2>
+      <p>GUIs (Graphical User Interfaces) are pretty cool. They make applications look 
+      <a href="http://en.wikipedia.org/wiki/Firefly_(TV_series)#Signature_show_elements">shiny</a>,
+      they let ordinary mortals play with our code, and (depending on who you ask) they're a lot more fun 
+      than command line programs.</p>
+
+      <p>Here's where the trouble comes in. When you're writing a GUI application, you need to provide the user with
+      choices:</p>
+
+      <div class="well">
+        <img src="img/MapMenu.png" alt="GUI Example">
+        <div class="fig">The Marauder's Map@Olin: GUIs are interactive!</div>
+      </div>
+
+      <p>How might we go about creating this interactivity? Well, we might imagine having a function
+      <code>button_clicked(the_button)</code> that does something based on which button is clicked:</p>
+
+<pre class="prettyprint linenums well">
+# Make Some Buttons
+
+...
+
+def button_clicked(the_button):
+    if the_button == "Open Map":
+        # Do Lots Of Stuff
+    elif the_button == "Refresh My Location":
+        # Do Some Other Stuff
+    elif the_button == "Correct My Location":
+        # And Even More Stuff
+    ...
+
+def event_loop():
+    # When a button is clicked, call button_clicked with the appropriate string
+
+    ...</pre>
+
+      <p>This might work well enough for simple programs with a few buttons, but as you can probably tell, 
+      this can get long and ugly very quickly, especially when you are working on a project collaboratively. 
+      Most GUI frameworks provide a neater, more event-based way of dealing with user actions with <em>callbacks</em>.</p>
+
+      <h2>
+      Callbacks
+      <small>Responding to Events</small>
+      </h2>
+
+      <p>The premise of a callback is pretty easy to understand. When some <em>event</em> happens, perform some <em>action</em>
+      by calling a function. To get this to work, we can <em>register</em> functions with events.</p>
+
+      <p>In <a href="http://www.pyside.org/"><em>PySide</em></a>, a pythonic wrapper for the modern GUI framework 
+      <a href="http://qt.nokia.com/products/"><em>QT</em></a>, the code we wrote above can be rewritten in the following way:</p>
+
+<pre class="prettyprint linenums well">
+class DemoWindow(QtGui.QDialog):
+    def create_buttons(self):
+        self.open_button = QtGui.QAction("Open Map", self, triggered = self.open_webapp)
+        self.refresh_button = QtGui.QAction("Refresh My Location", self, triggered=self.initiate_location_refresh)
+        self.correct_location_button = QtGui.QAction("Correct My Location", self, triggered=self.correct_location)
+        ...
+    
+    def open_webapp(self):
+        # Do Lots Of Stuff
+
+    def initiate_location_refresh(self):
+        # Do Some Other Stuff
+
+    def correct_location(self):
+        # And Even More Stuff
+    ...</pre>
+
+        <div class="alert">
+          <strong>Note:</strong> This code is a simplified and adapted excerpt from the 
+          <a href=https://github.com/ohack/maraudersmap-client">Marauder's Map@Olin</a>; 
+          it won't run if you paste it into a python shell.
+        </div>
+
+        <p>Without going too far into the details of how <a href="http://www.pyside.org/"><em>PySide</em></a> works, 
+        the <code>triggered</code> keyword argument for the <code>QtGui.QAction</code> constructor specifies the function
+        that will be executed when the button is clicked. For example, line 3 in the code example above sets the behavior of
+        the "Open Map" button to call the <code>open_webapp</code> function.</p>
+
+        <span class="label label-info">Heads up!</span> There's an important difference between <code>a_function</code> and
+        <code>a_function()</code> in languages like Python and JavaScript. The former is a <em>function object</em> while the latter
+        executes the function. The ability to pass around function objects like this makes creating callbacks really easy in Python 
+        and JavaScript.
+
+  <div id='ex1' class="alert alert-success alert-block">
+    <h4 class="alert-heading">Exercise 1: Try it out!</h4>
+    Try running each of the following lines in a python shell. Make sure you understand what is going on before skipping 
+    to the next section.
+<pre class="prettyprint linenums well">
+def get_greeting(name): return "Hello, %s." % name
+print get_greeting
+print get_greeting("YOUR NAME HERE")
+greeting_fn = get_greeting
+print greeting_fn
+print greeting_fn("YOUR NAME HERE")</pre>
+  </div>
+
+        <h2>
+        Dynamic Callbacks 
+        <small>Down the Rabbit Hole with Variable Scope</small>
+        </h2>
+
+        <p>Callbacks are great for static buttons you define manually, but how do you use them with dynamic buttons
+        with different behaviors? A simple example might be a "Correct My Location" feature that lets the user choose
+        his or her location from a dropdown menu:</p>
+
+        <div class="well">
+          <img src="img/HypotheticalMenu.png" alt="Hypothetical Dynamic GUI">
+          <div class="fig">Dynamic Buttons: Choose Your Location!</div>
+        </div>
+
+        <p>To avoid clouding the problem with buttons and server communication, let's imagine a list of dynamically created
+        functions that each print out a different number:</p>
+
+<pre class="prettyprint linenums well">
+def create_dynamic_callbacks():
+    button_callbacks = list() # Create a list for our callbacks
+    for num in range(10): # Loop through the numbers 0 to 9
+        # Create a new function for each iteration of the loop
+        def new_callback():
+            return num
+        
+        # Append the new function to the list of callbacks 
+        button_callbacks.append(new_callback)
+
+    # Try out all the callbacks to see if they work 
+    # (we wouldn't do this in an actual program):
+    for callback in button_callbacks:
+        print callback()
+
+create_dynamic_callbacks()</pre>
+  
+  <div id='ex2' class="alert alert-success alert-block">
+    <h4 class="alert-heading">Exercise 2: Try it out!</h4>
+    Copy the above code into a file and run it. Is the result what you expect? 
+  </div>
+
+      <p>While we might imagine that the program above should print out the numbers from 0 through 9, that assumption is clearly false.
+      WHAT? You might ask. Is Python broken? Has my whole life been a lie?</p>
+
+      <p>Before you throw down your keyboard in disgust, I can assure you that Python is behaving exactly as it should. 
+      Let's get a better handle on what's going on by testing out some theories.</p>
+
+      <h3>Theory One <small>Many Copies of the Same Function?</small></h3>
+      <p>Is the <code>new_callback</code> function only getting created once?</p>
+<pre class="prettyprint linenums well">
+def create_dynamic_callbacks():
+    button_callbacks = list() # Create a list for our callbacks
+    for num in range(10): # Loop through the numbers 0 to 9
+        # Create a new function for each iteration of the loop
+        def new_callback():
+            return num
+        
+        # Append the new function to the list of callbacks 
+        button_callbacks.append(new_callback)
+<div class="code-insertion">    # TESTING THEORY ONE:
+    for callback in button_callbacks:
+        print callback</div>
+    # Try out all the callbacks to see if they work 
+    # (we wouldn't do this in an actual program):
+    for callback in button_callbacks:
+        print callback()
+
+create_dynamic_callbacks()</pre>
+
+<pre class="prettyprint well">
+...
+&lt;function new_callback at 0x10046f<span class="code-insertion">7d0</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">848</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">8c0</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">938</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">9b0</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">a28</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">aa0</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">b18</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">b90</span>&gt;
+&lt;function new_callback at 0x10046f<span class="code-insertion">c08</span>&gt;
+</pre>
+
+      <p>Nope. If you understood <a href='#ex1'>Exercise 1</a>, you'll remember that different variables can both reference the same function object. 
+      In this case, you can see that each function object has a different address; each function is different.</p>
+
+      <h3>Theory Two <small>The value of <em>num</em>?</small></h3>
+      <p>Is <code>num</code> actually assigned to each instance of the function?</p>
+<pre class="prettyprint linenums well">
+def create_dynamic_callbacks():
+    button_callbacks = list() # Create a list for our callbacks
+    for num in range(10): # Loop through the numbers 0 to 9
+        # Create a new function for each iteration of the loop
+        def new_callback():
+            return num
+        
+        # Append the new function to the list of callbacks 
+        button_callbacks.append(new_callback)
+<div class="code-insertion">    # TESTING THEORY TWO:
+    num = 1337</div>
+    # Try out all the callbacks to see if they work 
+    # (we wouldn't do this in an actual program):
+    for callback in button_callbacks:
+        print callback()
+
+create_dynamic_callbacks()</pre>
+
+<pre class="prettyprint well">
+1337
+1337
+1337
+1337
+1337
+1337
+1337
+1337
+1337
+1337
+</pre>
+
+      <p>I think we're on to something here. Let's make sure:</p>
+<pre class="prettyprint linenums well">
+def create_dynamic_callbacks():
+    button_callbacks = list() # Create a list for our callbacks
+    for num in range(10): # Loop through the numbers 0 to 9
+        # Create a new function for each iteration of the loop
+        def new_callback():
+            return num
+        
+        # Append the new function to the list of callbacks 
+        button_callbacks.append(new_callback)
+
+    # Try out all the callbacks to see if they work 
+    # (we wouldn't do this in an actual program):
+    for callback in button_callbacks:
+        print callback()
+<div class="code-insertion">    print num
+    num = 1
+    print button_callbacks[0]()
+    num = 3
+    print button_callbacks[1]()
+    print button_callbacks[2]()
+    num = 7
+    print button_callbacks[3]()</div>
+
+create_dynamic_callbacks()</pre>
+
+<pre class="prettyprint well">
+...
+9
+1
+3
+3
+7
+</pre>
+
+      <p>There we have it. In Python, variables in function objects don't get evaluated when the function is <em>created</em>; they get evaluated
+      when the function is <em>called</em>. This is a powerful aspect of Python as a dynamic language, but it really isn't what we want in 
+      this case.</p>
+
+      <h2>Binding Variables to Functions <small>Taming Dynamic Callbacks</small></h2>
+      <p>The problem with the dynamic function creation code we have been dealing with is one of <em>variable scope</em>.
+      The <code>num</code> variable is local to the <code>create_dynamic_callbacks</code> function but one level above all of the 
+      <code>new_callback</code> functions.</p>
+      
+      <p>We want a new local number variable to be created every time we create a new function. Since variables are evaluated the moment functions
+      are called, we can solve our problem by calling a function to make our function:</p>
+
+<pre class="prettyprint linenums well">
+def create_dynamic_callbacks():
+    button_callbacks = list() # Create a list for our callbacks
+    for num in range(10): # Loop through the numbers 0 to 9
+        # Create a function to return a function with a local num variable 
+        def new_callback_creator(local_num):
+            def new_callback():
+                return local_num
+            return new_callback
+        
+        # Create a new function with a local copy of num
+        callback = new_callback_creator(num)
+
+        # Append the new function to the list of callbacks         
+        button_callbacks.append(callback)
+
+    # Try out all the callbacks to see if they work 
+    # (we wouldn't do this in an actual program):
+    for callback in button_callbacks:
+        print callback()
+
+create_dynamic_callbacks()</pre>
+
+<pre class="prettyprint well">
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre>
+
+      <p>Yo dawg, I heard you like functions, so I put a function in your function to create a new function every time you loop. 
+      It ain't pretty, but it gets the job done. Now we can create buttons with dynamic callbacks. Hooray!</p>
+
+      <h2>Asynchronous Callbacks in Javascript <small>Concurrency with Style</small></h2>
+
+      <p>While creating functions for buttons is one possible usecase, callbacks are also really useful for something called
+      <em>asynchronous programming</em>. At the beginning of this tutorial, I talked about the importance of GUIs for your
+      applications. The most important aspect of GUI development is interactivity. If you happen to perform a long operation
+      while your program is running, you might block the user from performing any actions while that operation is happening.</p>
+
+      <p>This is <strong>A Very Bad Thing&trade;</strong>, and you should never do it. Blocking operations are anathema to interactivity
+      and will make users yell at you with righteous anger, as they should.</p>
+
+      <p>"But I need to do <strong>Cool Things&trade;</strong> in my program," you say. "<strong>Cool Things&trade;</strong> take a long time.
+      Whatever shall I do?"</p>
+
+      <p>Never fear: with the magic of asynchronous programming, you can perform operations <em>in the background</em>, while the
+      user is interacting with the interface. Let's switch languages for a moment and examine how asynchronous programming is used
+      to perform background operations in the <a href="https://github.com/ohack/maraudersmap-ui">Marauder's Map@Olin Web Application</a>.</p>
+
+      <p>JavaScript behaves similarly to Python when it comes to callbacks, but it also allows you to create multi-line <em>anonymous functions</em>,
+      while Python restricts us to single-line <a href="http://docs.python.org/tutorial/controlflow.html#lambda-forms">lambda expressions</a> when we
+      want to create nameless functions.
+
+      <p>When you launch the Marauder's Map Web application, it refreshes every user's position and then starts a function to refresh the position of
+      every user again every second: </p>
+
+<pre class="prettyprint linenums well">
+$(function () { // Once the webpage has loaded
+  ...
+  var visibleUsers = {}; // Will keep track of users and their positions
+  ...
+  var imgWidth;
+  var imgHeight;
+  $('#map-img').on('load', function () { // Once the image has loaded
+                   // Get the dimensions of the image
+                   imgWidth = $('#map-img').width(); 
+                   imgHeight = $('#map-img').height();
+                   updateUsers(visibleUsers, imgWidth, imgHeight, function () { // Once the update function has finished
+                               setInterval(function() { // Every second (1000 milliseconds)
+                                           // Update user positions
+                                           updateUsers(visibleUsers, imgWidth, imgHeight, function () {} // Do nothing on completion
+                                           )}, 1000);
+                               });
+                   });
+  ...
+});
+</pre>
+
+      <p>This excerpt from the Marauder's Map@Olin illustrates multiple uses for callbacks. The first line defines an anonymous function
+      to execute when the webpage loads, and line 7 begins the definition for an anonymous function that will be executed when a 
+      page element with the <code>id</code> <code>map-img</code> has loaded. Both functions are callbacks that are called when an operation
+      is complete. Similarly, line 11 launches a function that runs a callback when it is finished. However, the <code>setInterval</code>
+      function on the next line is different. While it is still connected to a callback, it runs it every second.</p>
+
+      <div class="alert">
+        <strong>Note:</strong> The <code>updateUsers</code> function is an asynchronous function, which means that the rest of the 
+        program can continue executing before the function is finished. Additionally, if it takes longer than a second to
+        execute, it may be running at the same time as another instance of itself!
+      </div>
+
+      <p>Let's take a closer look at the <code>updateUsers</code> function to see why it is asynchronous:</p>
+
+
+<pre class="prettyprint linenums well">
+function updateUsers(usersObject, boundsWidth, boundsHeight, cb) {
+                     var newUsers = {};
+                     // Request user positions from the server asynchronously
+                     Api.getPositions(true, function (err, json) {
+                                      var extendedPositions = json.positions;
+                                      // Loop through all user positions and update the users
+                                      for (var i=0; i &lt; extendedPositions.length; i++) {
+                                        associatePositionMarkerWithBind(usersObject, extendedPositions[i], boundsWidth, boundsHeight);
+                                        newUsers[extendedPositions[i].username] = true;
+                                      }
+                                      
+                                       for (var uname in usersObject) {
+                                         ... 
+                                          /* Delete the markers of users who should no longer be on the map because
+                                             the server didn't tell us their positions.*/
+                                          if (newUsers[uname] != true) {
+                                              delete usersObject[uname]; 
+                                              ...
+                                          }
+                                         ...
+                                       }
+
+                                      cb(); // Execute the callback once users have been updated
+                       
+                     });
+}
+</pre>
+
+      <p>The specifics of how the <code>updateUsers</code> function works aren't important for our purposes; let's focus on line 
+      4, which defines an asynchronous server request. Since the remainder of the function is encapsulated in an another anonymous
+      callback, the function won't do anything until the server responds. Meanwhile, anything after a call to <code>updateUsers</code>
+      can execute before the function has finished executing. In the example below, "Hello," will probably be logged before "Olin":
+      </p>
+
+<pre class="prettyprint linenums well">
+updateUsers({}, 100, 100, function () {
+  console.log("Olin");  
+});
+console.log("Hello,");
+</pre>
+
+      <p>Why is this important? It means that any interactive code placed after the function can continue to run while long server
+      operations are happening, and the user won't get frustrated by the application appearing to freeze. It also means that we have to 
+      be very careful when we are designing algorithms that use data generated by the function.</p>
+
+      <p>To demonstrate the importance of this, let's pretend that the braces in <code>updateUsers</code> were moved around slightly:</p>
+
+<pre class="prettyprint linenums well">
+function updateUsers(usersObject, boundsWidth, boundsHeight, cb) {
+                     var newUsers = {};
+                     // Request user positions from the server asynchronously
+                     Api.getPositions(true, function (err, json) {
+                                      var extendedPositions = json.positions;
+                                      // Loop through all user positions and update the users
+                                      for (var i=0; i &lt; extendedPositions.length; i++) {
+                                        associatePositionMarkerWithBind(usersObject, extendedPositions[i], boundsWidth, boundsHeight);
+                                        newUsers[extendedPositions[i].username] = true;
+                                      }
+                     <span class="code-insertion">});</span> 
+
+                     for (var uname in usersObject) {
+                       ... 
+                        /* Delete the markers of users who should no longer be on the map because
+                           the server didn't tell us their positions.*/
+                        if (newUsers[uname] != true) {
+                            delete usersObject[uname]; 
+                            ...
+                        }
+                       ...
+                     }
+
+                     cb(); // Execute the callback once users have been updated
+              
+                     <span class="code-deletion">});</span>
+}
+</pre>
+
+    <p>Since <code>Api.getPositions</code> will not execute its callback until the server sends a response, <code>usersObject</code> and
+    <code>newUsers</code> will not have been modified by lines 8 and 9 before the <code>for</code> loop deletes every user on the map.
+    Oh noes!</p>
+
+    <p>Use asynchronous programming wisely.</p>
+
+    <h2>Questions? Feedback? <small>Who you gonna call?</small></h2>
+    If you have any questions about anything covered in this tutorial (or tips on making it even better!), contact me at
+    <a href="mailto:julian.ceipek@students.olin.edu">julian.ceipek@students.olin.edu</a>.
+
+  </body>
+
+
+</html>
+
+
+
+
+
+
