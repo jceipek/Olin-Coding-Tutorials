@@ -59,6 +59,7 @@
               <li class="nav-header"><a href="#mapping-paths-to-space">Mapping Paths to Space</a></li>
               <li><a href="#funnel-algorithm">The Simple Stupid Funnel Algorithm</a></li>
               <li><a href="#steering">Steering</a></li>
+              <li class="nav-header"><a href="#resources">Resources</a></li>
             </ul>
           </div>
         </div>
@@ -276,9 +277,16 @@ inline float triarea2(const float* a, const float* b, const float* c)
 
               <p>We took an A* path and smoothed it, but the characters still move unnaturally! This is where steering behavior comes into play. Real people don't make point turns when they go around corners (or at least most people don't, anyway...), why should your characters? The smoothed A* path is a great guide for environment navigation, but it doesn't need to be followed exactly. One of the simplest things you can do is to implement a <a href="http://www.red3d.com/cwr/steer/gdc99/">path following</a> behavior that tells characters to generally stay within range of the smoothed path and to steer back towards it if they are getting off-track. You can combine multiple behaviors together to get even better results.</p>
 
-            <h3>References</h3>
-              <p>That's it for now! I </p>
-          
+            <h3 id='resources'>Resources</h3>
+              <p>That's it for now! If you're interested in exploring pathfinding even further, I highly reccomend the following:</p>
+              <ul>
+                <li><a href="http://digestingduck.blogspot.com/">Digesting Duck Blog about Game AI</a></li>
+                <li><a href="http://www.valvesoftware.com/publications/2009/ai_systems_of_l4d_mike_booth.pdf">Valve's Left 4 Dead Presentation</a></li>
+                <li><a href="http://www.navpower.com/gdc2006_miles_david_pathplanning.ppt">Crowds in A Polygon Soup Presentation</a></li>
+              </ul>
+
+              <p>Have fun!</p>
+
         </div>
       </div>
     </div>
