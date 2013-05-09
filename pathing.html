@@ -1,0 +1,253 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Game Path Planning</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="css/main.css" rel="stylesheet">
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
+
+    <!-- Fav and touch icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
+      <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
+                    <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+                                   <link rel="shortcut icon" href="../assets/ico/favicon.png">
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="brand" href="#">The Oliner's Guide to Programming Concepts</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span3">
+          <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+              <!--class="active"-->
+              <li><a href="#why">Why Should I Care?</a></li>
+              <li class="nav-header">
+                <a href="#subdividing-space">Subdividing Space</a>
+              </li>
+              <li><a href="#everything-is-a-graph">Everything is a Graph</a></li>
+              <li><a href="#waypoints">Waypoints</a></li>
+              <li><a href="#grids">Grids</a></li>
+              <li><a href="#navigation-meshes">Navigation Meshes</a></li>
+              <li class="nav-header"><a href="#finding-paths">Finding Paths with A*</a></li>
+              <li class="nav-header"><a href="#mapping-paths-to-space">Mapping Paths to Space</a></li>
+              <li><a href="#funnel-algorithm">The Simple Stupid Funnel Algorithm</a></li>
+              <li><a href="#steering">Steering</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="span9">
+          <h1>
+              Game Path Planning
+              <small id='author'>
+                by Julian Ceipek
+              </small>
+          </h1>
+          <h2 id='why'>Why should I care?</h2>
+            <p>Path planning is a key part of the Artificial Intelligence (<em class='key-term'>AI</em>) in games. It's how units move to where you click in Starcraft. It's how enemies in Mass Effect run around cover to get to you. It's the magic that makes computer-controlled characters move towards goals efficiently while avoiding obstacles and hazards.</p>
+
+            <p>Getting started with proper pathfinding behavior can be daunting. The internet is filled with descriptions of the classic "A* algorithm" for grid-based navigation. But modern 3d games often involve complex environments, right? How do programmers make characters move around in those? Why don't characters zig-zag their way towards you in games with good AI?</p>
+
+            <p>In this tutorial, we'll take a look at making characters navigate the world using <em class='key-term'>Navigation Meshes</em>, which are used in lots of the best games available today. That technology is part of what <a href="https://developer.valvesoftware.com/wiki/Navigation_Meshes">Valve</a> and <a href="http://udn.epicgames.com/Three/NavigationMeshTechnicalGuide.html">Unreal</a> use in their game engines.</p>
+
+          <h2 id='subdividing-space'>Subdividing Space</h2>
+
+            <p>The first part of any pathfinding AI is figuring out how to represent the game world in a way that is useful for navigation. Some of the most common representations are
+              <ul>
+                <li><a href="#waypoints">Waypoints</a></li>
+                <li><a href="#grids">Grids</a></li>
+                and
+                <li><a href="#navigation-meshes">Navigation Meshes</a></li>
+              </ul>
+            </p>
+
+            <h3 id='everything-is-a-graph'>Everything is a Graph</h3>
+
+              <p>The most important thing to realize about all of these representations is that they are just <em class='key-term'>graphs</em>. The first thing you thought of when I said "graph" was probably a bar or line graph.</p>
+
+              <p>That's not what I mean here. In game AI (and in mathematics), graphs are a series of <em class='key-term'>nodes</em> connected by <em class='key-term'>edges</em>. The simplest way to think of these terms in the context of pathfinding AI is that each node in a graph represents a possible place a character could be and each edge indicates that it is possible for the character to move between the nodes it connects. Each edge has an associated <em>cost</em>, which represents the effort it takes for a character to move from one node to the next. When we talk about pathfinding, we're really talking about finding a path between two nodes in a graph, ideally minimizing the cost of the path.</p>
+
+              <p>INSERT FIGURE HERE</p>
+
+            <h3 id='waypoints'>Waypoints</h3>
+
+              <p>Waypoint representations of space are easy to create and think about, but they <a href="http://www.ai-blog.net/archives/000152.html">are not very good for pathfinding</a>. Although they use very little memory, they result in inefficient, unrealistic paths.</p>
+
+              <p>The main idea behind waypoint systems is to place a small number of nodes and edges in the game world so that characters can find their way around static obstacles. Unfortunately, if characters always stay on paths between waypoints, their behavior will be unrealistically constrained. However, if they leave the waypoint network, they can get stuck easily.</p>
+
+            <h3 id='grids'>Grids</h3>
+
+              <p>If you look for an intruductory tutorial on path planning, chances are you'll find one that uses a grid. Grids work really well for small environments, especially for games in which characters move on a grid already. More complex environments require finer grids, which can take up an infeasible amount of memory for large worlds.</p>
+
+              <p>You might have seen a representation of a grid like this:
+                INSERT FIGURE HERE
+                The numbers in each grid square represent the difficulty or "cost" of going to that square from an adjacent square.
+              <p>
+
+              <p>What you might not have realized is that a grid like this is just a more compact way to represent a very dense graph:</p>
+
+              <p>INSERT FIGURE HERE</p>
+
+              <p>Grids don't seem to be used much for large, modern games. However, cutting-edge AI researchers are <a href="http://digestingduck.blogspot.com/2010/03/local-navigation-grids.html">finding uses for them</a> for very localized navigation in conjunction with other techniques such as navigation meshes.</p>
+
+            <h3 id='navigation-meshes'>Navigation Meshes</h3>
+
+              <p>Navigation meshes are an efficient way to represent walkable regions in a game world. A common implementation relies on convex polygons such as triangles.</p>
+
+              INSERT FIGURE HERE
+
+              <p>Just like in the grid representation, each polygon is a node and each edge shared by two polygons represents a connection between nodes.</p>
+
+              INSERT FIGURE HERE
+
+          <h2 id='finding-paths'>Finding Paths with A*</h2>
+            <p>Great! We can represent space: now what? How will that help our characters get where we want them to go? The answer is: search. The A* (pronounced "A-star") algorithm is an efficient way of finding the cheapest path between two points on a graph.</p>
+
+            <p>There are many great <a href="http://www.policyalmanac.org/games/aStarTutorial.htm">explanations available online</a>, so I won't go into a lot of detail, but the main idea behind A* is to maintain a frontier of unexplored nodes a character could visit at any point in time and to explore the one most likely to be part of the least costly path to the goal first. To do this, it uses a <em class='key-term'>heuristic</em> function that estimates the cost from a node to the goal. The simplest type of heuristic that works for A* simply returns the distance between the node and the goal. Here's an example A* implementation:</p>
+
+        <div class="well">
+          <div id="editor" style="height: 800px;">// Returns a list representing the optimal path between startNode and endNode or null if such a path does not exist
+// If the path exists, the order is such that elements can be popped off the path
+// Note: if you use this code in Javascript, make sure that the toString function of each node returns a unique value
+FindRoute = function (startNode, goalNode) { 
+  var frontier = PriorityQueue({low: true}); // Priority Queue (https://github.com/STRd6/PriorityQueue.js),
+                                             //  what have we not explored?
+  var explored = new Set(); // Set (https://github.com/jau/SetJS), what have we explored?
+
+  var pathTo = {}; // A dictionary mapping from nodes to nodes,
+                   //  used to keep track of the path
+                   //  The node that is the key
+  var gCost = {}; // A dictionary mapping from nodes to floats,
+                  //  used to keep track of the "G cost" associated with traveling to each node from startNode
+
+  pathTo[startNode] = null;
+  gCost[startNode] = 0.0;
+
+  frontier.push(startNode, 0.0 + HeuristicCostEstimate(startNode, goalNode));
+
+  while (!frontier.empty()) { // While the frontier remains unexplored
+    var leafNode = frontier.Values[0];
+    if (leafNode == goalNode) {
+      // We found the solution! Reconstruct it.
+      var path = [];
+      var pointer = goalNode;
+
+      while (pointer != null) {
+        path.push(pointer);
+        pointer = pathTo[pointer];
+      }
+
+      return path;
+    }
+    frontier.pop();
+
+    explored.add(leafNode);
+    for (var i = 0; i < leafNode.linkedTo.length; i++) {
+      var connectedNode = leafNode.linkedTo[i];
+      if (!explored.contains(connectedNode) && !frontier.includes(connectedNode)) {
+        gCost[connectedNode] = gCost[leafNode] + CostBetween(leafNode, connectedNode);
+        pathTo[connectedNode] = leafNode;
+        frontier.push(connectedNode, gCost[connectedNode] + HeuristicCostEstimate(connectedNode, goalNode));
+      }     
+    }
+  }
+
+  return null; // No path could be found
+}</div>
+        </div>
+          
+          <h2 id='mapping-paths-to-space'>Mapping Paths to Space</h2>
+
+            <p>Now what? We have some optimal path in an abstract graph. How does that help our characters move? The answer to that question depends a lot on the specifics of the game you're making. In some games, you can probably get away with mapping the graph directly to physical space. In most cases, though, you need to smooth the resulting path somehow. In <a href="http://www.valvesoftware.com/publications/2009/ai_systems_of_l4d_mike_booth.pdf">Left 4 Dead</a>, characters move between portal midpoints and smooth their path by moving towards a visible node that is part of the optimal A* path but is several steps ahead.</p>
+
+            <p>We can do better, though. If we are using a grid or navigation mesh, we can implement a smoothing technique known as the <em class='key-term'>Simple Stupid Funnel Algorithm</em>, <a href="http://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html">a practical path smoothing technique</a> developed by the lead AI programmer from the original Crysis, based on <a href="https://skatgame.net/mburo/ps/thesis_demyen_2006.pdf">a PHD thesis on pathfinding.</a></p>
+
+            <h3 id='funnel-algorithm'>The Simple Stupid Funnel Algorithm</h3>
+
+            <p>This algorithm is all about smoothing paths by finding corners on the minimum distance path of a navigation mesh without leaving the walkable area. The result is the same as if the A* path were a string being pulled until it was taut.</p>
+
+            <p>The algorithm proceeds as follows:</p>
+
+            <ol>
+              <li>Create a list of the portals along the A* path. Make sure that the points of each portal are stored the same way relative to the character. You will need to know if a point is to the left or right of the character.</li>
+              <li>Create a "funnel" with three points: the characters starting location (the apex), the right side of the portal, and the left side of the portal.</li>
+              <li>Alternate updating the left and right sides of the "funnel," making it narrower each time</li>
+              <li>When the sides of the funnel cross, make the point you didn't update the apex of the new funnel, and store it as part of the smoothed path.</li>
+            </ol>
+
+            INSERT FIGURE HERE
+
+            <p>You can find the defacto C implementation of the funnel algorithm <a href="http://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html">here.</a> However, you'll probably have to adapt it to fit your project because it is highly implementation-dependent.</p>
+
+            <p>A key part of writing your own implementation depends on understanding how to tell if the funnel is crossing itself. One of the easiest and most efficient ways to do this involves the <a href="http://en.wikipedia.org/wiki/Cross_product#Geometric_meaning">cross product</a>. In 2d, we can use the sign of the non-zero component of the cross product to tell us the order of the points in a triangle. In most 3d game environments, we can simply disregard the third dimension for the sake of path smoothing, since most characters don't need to walk on ceilings or perfectly vertical walls.</p>
+
+            <div class="well">
+              <div id="editor2" style="height: 220px;">// This function from http://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html 
+// is called "triarea2" because the cross product of two vectors
+// returns the area of the parallellogram the two sides form
+// (which has twice the area of the triangle they form)
+// The sign of the result will tell you the order of the points passed in.
+inline float triarea2(const float* a, const float* b, const float* c)
+{
+ const float ax = b[0] - a[0];
+ const float ay = b[1] - a[1];
+ const float bx = c[0] - a[0];
+ const float by = c[1] - a[1];
+ return bx*ay - ax*by;
+}</div>
+            </div>
+
+            <h3 id='steering'>Steering</h3>
+
+              <p>We took an A* path and smoothed it, but the characters still move unnaturally! This is where steering behavior comes into play. Real people don't make point turns when they go around corners (or at least most people don't, anyway...), why should your characters? The smoothed A* path is a great guide for environment navigation, but it doesn't need to be followed exactly. One of the simplest things you can do is to implement a <a href="http://www.red3d.com/cwr/steer/gdc99/">path following</a> behavior that tells characters to generally stay within range of the smoothed path and to steer back towards it if they are getting off-track. You can combine multiple behaviors together to get even better results.</p>
+
+            <h3>References</h3>
+              <p>That's it for now! I </p>
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="http://rawgithub.com/ajaxorg/ace-builds/master/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script>
+        var editors = [ace.edit("editor"),ace.edit("editor2")];
+        var i = 0;
+        for (i = 0; i < editors.length; i++) {
+          editors[i].setTheme("ace/theme/monokai");
+        }
+        editors[0].getSession().setMode("ace/mode/javascript");
+        editors[1].getSession().setMode("ace/mode/c_cpp");
+        
+    </script>
+
+  </body>
+</html>
