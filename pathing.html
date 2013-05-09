@@ -93,7 +93,29 @@
 
               <p>That's not what I mean here. In game AI (and in mathematics), graphs are a series of <em class='key-term'>nodes</em> connected by <em class='key-term'>edges</em>. The simplest way to think of these terms in the context of pathfinding AI is that each node in a graph represents a possible place a character could be and each edge indicates that it is possible for the character to move between the nodes it connects. Each edge has an associated <em>cost</em>, which represents the effort it takes for a character to move from one node to the next. When we talk about pathfinding, we're really talking about finding a path between two nodes in a graph, ideally minimizing the cost of the path.</p>
 
-              <p>INSERT FIGURE HERE</p>
+              <div class="well">
+                <img src="img/Pathing/Node.png" alt="Node">
+                <div class="fig">This is a node. It represents a place a character can be.</div>
+              </div>
+
+              <div class="well">
+                <img src="img/Pathing/Edge.png" alt="Edge">
+                <div class="fig">Characters can only move between nodes via edges.</div>
+              </div>
+              <div class="alert">
+                  <strong>Note:</strong> The edges we'll be looking at are bi-directional; characters can walk between them at will. More complicated edges might be one way only. For example, a character might jump down from a platform but be unable to jump back up. Don't worry, though, if you ever run into that kind of situation, the techniques we'll talk about can be applied just as easily.
+                </div>
+
+              <div class="well">
+                <img src="img/Pathing/Graph-cost.png" alt="Graph">
+                <div class="fig">A graph is a network of nodes. Moving between nodes is costly.</div>
+              </div>
+
+              <div class="well">
+                <img src="img/Pathing/Graph-Path.png" alt="Graph Path">
+                <div class="fig">The cheapest path from A to B takes 3 steps and has a total cost of 4 = 2 + 1 + 1.</div>
+              </div>
+
 
             <h3 id='waypoints'>Waypoints</h3>
 
@@ -101,30 +123,49 @@
 
               <p>The main idea behind waypoint systems is to place a small number of nodes and edges in the game world so that characters can find their way around static obstacles. Unfortunately, if characters always stay on paths between waypoints, their behavior will be unrealistically constrained. However, if they leave the waypoint network, they can get stuck easily.</p>
 
+              <div class="well">
+                <img src="img/Pathing/Island.png" alt="Island">
+                <div class="fig">A rough island world.</div>
+              </div>
+
+              <div class="well">
+                <img src="img/Pathing/Island-Waypoints.png" alt="Island with Waypoints">
+                <div class="fig">Waypoints around an island. Each waypoint corresponds directly to a node. The costs would just be the length of the connections between waypoints. Note that some regions are unreachable.</div>
+              </div>
+
             <h3 id='grids'>Grids</h3>
 
               <p>If you look for an intruductory tutorial on path planning, chances are you'll find one that uses a grid. Grids work really well for small environments, especially for games in which characters move on a grid already. More complex environments require finer grids, which can take up an infeasible amount of memory for large worlds.</p>
 
-              <p>You might have seen a representation of a grid like this:
-                INSERT FIGURE HERE
-                The numbers in each grid square represent the difficulty or "cost" of going to that square from an adjacent square.
-              <p>
+              <p>You might have seen a representation of a grid like this:</p>
+              <div class="well">
+                <img src="img/Pathing/Island-Grid.png" alt="Island with Grid">
+                <div class="fig">The numbers in each grid square represent the difficulty or "cost" of going to that square from an adjacent square. The rough grid makes many areas unreachable. A higher resolution grid would use more memory but would represent the world more effectively.</div>
+              </div>
 
               <p>What you might not have realized is that a grid like this is just a more compact way to represent a very dense graph:</p>
-
-              <p>INSERT FIGURE HERE</p>
+              <div class="well">
+                <img src="img/Pathing/Island-Grid-Graph.png" alt="Island with Grid and Graph">
+                <div class="fig">A grid is just a graph!</div>
+              </div>
 
               <p>Grids don't seem to be used much for large, modern games. However, cutting-edge AI researchers are <a href="http://digestingduck.blogspot.com/2010/03/local-navigation-grids.html">finding uses for them</a> for very localized navigation in conjunction with other techniques such as navigation meshes.</p>
 
             <h3 id='navigation-meshes'>Navigation Meshes</h3>
 
-              <p>Navigation meshes are an efficient way to represent walkable regions in a game world. A common implementation relies on convex polygons such as triangles.</p>
+              <p>Navigation meshes are an efficient way to represent walkable regions in a game world. A common implementation relies on connected convex polygons.</p>
 
-              INSERT FIGURE HERE
+              <div class="well">
+                <img src="img/Pathing/Island-NavMesh.png" alt="Island with NavMesh">
+                <div class="fig">Navigation meshes efficiently describe walkable regions in the world.</div>
+              </div>
 
               <p>Just like in the grid representation, each polygon is a node and each edge shared by two polygons represents a connection between nodes.</p>
 
-              INSERT FIGURE HERE
+              <div class="well">
+                <img src="img/Pathing/Island-NavMesh-Nodes.png" alt="Island with Graph overlayed on NavMesh">
+                <div class="fig">A Navigation Mesh is also just a graph!</div>
+              </div>
 
           <h2 id='finding-paths'>Finding Paths with A*</h2>
             <p>Great! We can represent space: now what? How will that help our characters get where we want them to go? The answer is: search. The A* (pronounced "A-star") algorithm is an efficient way of finding the cheapest path between two points on a graph.</p>
@@ -181,6 +222,11 @@ FindRoute = function (startNode, goalNode) {
   return null; // No path could be found
 }</div>
         </div>
+
+            <div class="well">
+              <img src="img/Pathing/A-Star.png" alt="A*">
+              <div class="fig">The result of A* on a navigation mesh.</div>
+            </div>
           
           <h2 id='mapping-paths-to-space'>Mapping Paths to Space</h2>
 
@@ -201,7 +247,10 @@ FindRoute = function (startNode, goalNode) {
               <li>When the sides of the funnel cross, make the point you didn't update the apex of the new funnel, and store it as part of the smoothed path.</li>
             </ol>
 
-            INSERT FIGURE HERE
+            <div class="well">
+              <img src="img/Pathing/Funnel-Algorithm.png" alt="Funnel Algorithm">
+              <div class="fig">Step-by-step demonstration of the funnel algorithm.</div>
+            </div>
 
             <p>You can find the defacto C implementation of the funnel algorithm <a href="http://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html">here.</a> However, you'll probably have to adapt it to fit your project because it is highly implementation-dependent.</p>
 
